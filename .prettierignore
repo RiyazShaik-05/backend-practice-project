@@ -1,0 +1,9 @@
+*.env
+.env
+.env.test
+.env.production
+/.vscode
+/node_modules
+./dist
+.env.*
+
