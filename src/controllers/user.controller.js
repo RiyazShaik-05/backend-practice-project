@@ -89,7 +89,6 @@ const generateAccessAndRefreshTokens = async (userID) => {
 
 }
 
-
 const loginUser = asyncHandler( async (req,res) => {
     
     //take data from req
@@ -198,12 +197,98 @@ const refreshAccessToken = asyncHandler( async(req,res) => {
     } catch (error) {
         throw new ApiError(401,"Error Refreshing AccessToken");
         
-    }
-
-
-
-
+    };
 })
 
+const changeCurrentPassword = asyncHandler( async(req,res) =>{
+    const { oldPassword , newPassword } = req.body;
 
-export { registerUser , loginUser , logoutUser , refreshAccessToken };
+    const user = await User.findById(req.user?._id);
+    const correctPassword = user.isPasswordCorrect(oldPassword);
+
+    if(!correctPassword) { throw new ApiError(400,"Invalid old Password")};
+
+    user.password = newPassword;
+
+    await user.save({validityBeforeSave: false});
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200,{},"Password Changed Successfully")
+    );
+     
+});
+
+const getCurrentUser = asyncHandler( async(req,res) => {
+    return res.status(200,{},new ApiResponse(200,req.user,"current User Ftched Successfully"));
+})
+
+const updateAccountDetails = asyncHandler( async(req,res) => {
+    const {fullName , email} = req.body;
+
+    if(!fullName || !email){
+        throw new ApiError(400,"All Fields required");
+    }
+
+    const user = await User.findByIdAndUpdate(req.user?._id,{
+        $set:{
+            fullName: fullName,
+            email: email
+        }
+    },{new : true}).select("-password")
+
+    return res
+    .status(200)
+    .json(new ApiResponse(
+        200,
+        user,
+        "Account Detail Updated Successfully"
+    ));
+});
+
+const updateUserAvatar = asyncHandler( async(req,res) => {
+    const avatarLocalFilePath = req.file?.path;
+
+    if(!avatarLocalFilePath) { throw new ApiError(400,"Avatar file is missing")};
+
+    const avatarResponse = uploadOnCloudinary(avatarLocalFilePath);
+
+    if(!avatarResponse.url) { throw new ApiError(400,"Error while uploading on avatr")};
+
+    const user = await User.findByIdAndUpdate(req.user?._id,{
+        $:{
+            avatar: avatarResponse.url
+        }
+    },{new: true}).select("-password");
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200,user,"avatar changed Suucesfully")
+    )
+})
+
+const updateUserCoverImage = asyncHandler( async(req,res) => {
+    const coverImageLocalFilePath = req.file?.path;
+
+    if(!coverImageLocalFilePath) { throw new ApiError(400,"Cover Image file is missing")};
+
+    const coverImageResponse = uploadOnCloudinary(avatarLocalFilePath);
+
+    if(!coverImageResponse) { throw new ApiError(400,"Error while uploading Cover Image on Cloudinary")};
+
+    const user = await User.findByIdAndUpdate(req.user?._id,{
+        $:{
+            coverImage: coverImageResponse.url
+        }
+    },{new: true}).select("-password");
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200,user,"coverImage changed Suucesfully")
+    )
+})
+
+export { registerUser , loginUser , logoutUser , refreshAccessToken , updateAccountDetails , getCurrentUser , changeCurrentPassword , updateUserCoverImage, updateUserAvatar };
